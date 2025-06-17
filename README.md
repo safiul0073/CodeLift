@@ -24,6 +24,6 @@ Add this to your `composer.json`:
 "repositories": [
   {
     "type": "path",
-    "url": "packages/vendorname/laravel-auto-updater"
+    "url": "packages/safiul0073/code-lifter"
   }
 ]
