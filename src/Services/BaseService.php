@@ -16,6 +16,12 @@ class BaseService
      * this is new project zip file that will be downloaded
      * @var 
      */
+    protected $application_name = '';
+
+    /**
+     * this is new project zip file that will be downloaded
+     * @var 
+     */
     protected $new_project = null;
 
     /**
@@ -23,12 +29,6 @@ class BaseService
      * @var 
      */
     protected $response_check = null;
-
-    /**
-     * this is new project zip file that will be downloaded
-     * @var 
-     */
-    protected $application_name = '';
 
     /**
      * Returns the base url for the update api

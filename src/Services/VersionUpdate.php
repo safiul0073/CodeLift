@@ -9,6 +9,16 @@ use Illuminate\Support\Facades\Artisan;
 
 class VersionUpdate extends BaseService
 {
+
+    public function setApiUrl($url)
+    {
+        $this->setApiUrl($url);
+    }
+
+    public function setApplicationName($name)
+    {
+        $this->setApplicationName($name);
+    }
     /**
      * Checks for updates by invoking the checkVersion method and retrieves the response.
      *
