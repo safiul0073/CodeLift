@@ -12,8 +12,7 @@ class UpdateController extends Controller
 
     public function __construct(Version $version)
     {
-       $version->setApiUrl(env('UPDATE_API_URL'));
-       $version->setApplicationName(env('APP_NAME'));
+       $version->setup(env('UPDATE_API_URL'), env('APP_NAME'));
 
        $this->version = $version;
     }
