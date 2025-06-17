@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Src\Interface\Version;
 
-class UpdateController extends Controller
+class UpdateController extends Controller 
 {
     private $version;
 

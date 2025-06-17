@@ -6,8 +6,9 @@ use Src\Exceptions\MyException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Artisan;
+use Src\Interface\Version;
 
-class VersionUpdate extends BaseService
+class VersionUpdate extends BaseService implements Version
 {
 
     public function setApiUrl($url)
