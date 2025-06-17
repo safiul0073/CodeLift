@@ -3,6 +3,7 @@
 namespace Src\Services;
 
 use Illuminate\Support\Facades\Http;
+use Src\Exceptions\MyException;
 
 class BaseService
 {
@@ -66,6 +67,10 @@ class BaseService
     {
         $this->new_project = $new_project;
     }
+    /**
+     * Sets the base url for the update api
+     * @param string $base_url
+     */
     protected function setBaseUrl(string $base_url)
     {
         $this->base_url = $base_url;
@@ -90,10 +95,20 @@ class BaseService
         $version = config('app.version');
         $ip_address = request()->ip();
 
-        $response = Http::get("$url/api/v1/update-available?version=$version&name=Boativus&ip=$ip_address")->json();
+        try {
+            $response = Http::get("$url/api/v1/update-available?version=$version&name=Boativus&ip=$ip_address")->json();
+        } catch (\Throwable $th) {
+            throw new MyException($th->getMessage(), 500);
+        }
 
-        $this->setNewProject($response['file_path']);
+        if (empty($response)) {
+            throw new MyException('Failed to check for update.', 500);
+        }
 
+        if (isset($response['file_path'])){
+            $this->setNewProject($response['file_path']);
+        }
+        
         $this->response_check = $response;
 
         return $this;
