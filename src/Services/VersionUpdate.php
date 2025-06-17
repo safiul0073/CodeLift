@@ -11,10 +11,12 @@ use Src\Interface\Version;
 class VersionUpdate extends BaseService implements Version
 {
 
-    public function setup(string $url, string $name)
+    public function setup(string $name, ?string $url)
     {
-        $this->setBaseUrl($url);
-
+        if (!empty($url)) {
+            $this->setBaseUrl($url);
+        }
+        
         $this->setApplicationName($name);
     }
     /**

@@ -11,7 +11,7 @@ class BaseService
      * this is api that will be called for getting new project and check for update
      * @var string
      */
-    protected $base_url = ''; 
+    protected $base_url = 'https://script.pxlaxis.com'; 
 
     /**
      * this is new project zip file that will be downloaded

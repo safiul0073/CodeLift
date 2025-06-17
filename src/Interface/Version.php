@@ -4,7 +4,7 @@ namespace Src\Interface;
 
 interface Version
 {
-    public function setup(string $url, string $name);
+    public function setup(string $url, ?string $name);
 
     public function check();
 
