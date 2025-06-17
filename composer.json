@@ -1,13 +1,11 @@
 {
-    "name": "safiul0073/laravel-project-updater",
+    "name": "safiul0073/code-lifter",
     "description": "A Laravel package to easily update your project by clicking a button on your dashboard",
     "keywords": [
         "laravel",
         "update",
         "database",
-        "files",
-        "production",
-        "deployment"
+        "files"
     ],
     "type": "library",
     "license": "MIT",
