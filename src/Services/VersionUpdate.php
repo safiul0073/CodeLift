@@ -13,7 +13,7 @@ class VersionUpdate extends BaseService implements Version
 
     public function setup(string $url, string $name)
     {
-        $this->setApiUrl($url);
+        $this->setBaseUrl($url);
 
         $this->setApplicationName($name);
     }

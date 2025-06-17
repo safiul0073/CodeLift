@@ -66,6 +66,10 @@ class BaseService
     {
         $this->new_project = $new_project;
     }
+    protected function setBaseUrl(string $base_url)
+    {
+        $this->base_url = $base_url;
+    }
     /**
      * Set the new project zip file that will be downloaded
      * @param string $application_name
