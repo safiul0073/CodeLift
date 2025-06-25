@@ -136,7 +136,7 @@ class VersionUpdate extends BaseService implements Version
         try {
             Http::post("$url/api/v1/update-log", [
                 'user_agent' => $_SERVER['HTTP_USER_AGENT'],
-                'name' => 'Boativus',
+                'slug' => 'boatibus',
                 'ip' => $ip_address,
             ]);
         } catch (\Throwable $th) {
