@@ -11,13 +11,20 @@ use Src\Interface\Version;
 class VersionUpdate extends BaseService implements Version
 {
 
+    /**
+     * Configures the version update service by setting the application name and optionally the base URL.
+     *
+     * @param string $name The name of the application as it like lowercase.
+     * @param string|null $url The base URL for the update API. If null, the URL is not set.
+     */
+
     public function setup(string $name, ?string $url)
     {
         if (!empty($url)) {
             $this->setBaseUrl($url);
         }
         
-        $this->setApplicationName($name);
+        $this->setApplicationName(strtolower($name));
     }
     /**
      * Checks for updates by invoking the checkVersion method and retrieves the response.
@@ -136,7 +143,7 @@ class VersionUpdate extends BaseService implements Version
         try {
             Http::post("$url/api/v1/update-log", [
                 'user_agent' => $_SERVER['HTTP_USER_AGENT'],
-                'slug' => 'boatibus',
+                'slug' => $this->getApplicationName(),
                 'ip' => $ip_address,
             ]);
         } catch (\Throwable $th) {

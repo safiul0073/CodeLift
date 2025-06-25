@@ -96,7 +96,7 @@ class BaseService
         $ip_address = request()->ip();
 
         try {
-            $response = Http::get("$url/api/v1/update-available?version=$version&slug=boatibus&ip=$ip_address")->json();
+            $response = Http::get("$url/api/v1/update-available?version=$version&slug=$this->application_name&ip=$ip_address")->json();
         } catch (\Throwable $th) {
             throw new MyException($th->getMessage(), 500);
         }
