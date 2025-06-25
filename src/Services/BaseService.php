@@ -1,9 +1,8 @@
-<?php 
+<?php
 
 namespace Src\Services;
 
 use Illuminate\Support\Facades\Http;
-use Src\Exceptions\MyException;
 
 class BaseService
 {
@@ -11,23 +10,23 @@ class BaseService
      * this is api that will be called for getting new project and check for update
      * @var string
      */
-    protected $base_url = 'https://script.pxlaxis.com'; 
+    protected $base_url = 'https://script.pxlaxis.com';
 
     /**
      * this is new project zip file that will be downloaded
-     * @var 
+     * @var
      */
     protected $application_name = '';
 
     /**
      * this is new project zip file that will be downloaded
-     * @var 
+     * @var
      */
     protected $new_project = null;
 
     /**
      * this is new project zip file that will be downloaded
-     * @var 
+     * @var
      */
     protected $response_check = null;
 
@@ -98,18 +97,16 @@ class BaseService
         try {
             $response = Http::get("$url/api/v1/update-available?version=$version&slug=$this->application_name&ip=$ip_address")->json();
         } catch (\Throwable $th) {
-            throw new MyException($th->getMessage(), 500);
         }
 
-        if (empty($response)) {
-            throw new MyException('Failed to check for update.', 500);
-        }
-
-        if (isset($response['file_path'])){
+        if (isset($response['file_path'])) {
             $this->setNewProject($response['file_path']);
         }
-        
-        $this->response_check = $response;
+
+        $this->response_check = $response ?? [
+            'is_update_available' => false,
+            'update_logs' => [],
+        ];
 
         return $this;
     }
