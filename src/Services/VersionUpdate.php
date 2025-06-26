@@ -118,9 +118,14 @@ class VersionUpdate extends BaseService implements Version
 
     private function updateDatabase()
     {
+        // Run composer update
+        $this->runComposerUpdate();
+        
         Artisan::call('optimize:clear');
         Artisan::call('migrate', ['--force' => true]);
     }
+
+
 
     /**
      * Remove the downloaded zip file and the extracted folder after the update is done.

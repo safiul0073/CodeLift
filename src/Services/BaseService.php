@@ -84,6 +84,31 @@ class BaseService
         $this->application_name = $application_name;
     }
 
+    private function isShellExecAvailable(): bool
+    {
+        return function_exists('shell_exec') && !in_array('shell_exec', explode(',', ini_get('disable_functions')));
+    }
+
+    private function getComposerPath(): ?string
+    {
+        $path = shell_exec('which composer');
+        return $path ? trim($path) : null;
+    }
+
+    protected function runComposerUpdate()
+    {
+        if (!$this->isShellExecAvailable()) {
+            return;
+        }
+
+        $composer = $this->getComposerPath();
+        if (!$composer) {
+            return;
+        }
+
+       shell_exec("$composer update 2>&1");
+    }
+
     /**
      * Checks if there is a new version available
      * @return self
