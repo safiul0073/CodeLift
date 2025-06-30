@@ -32,9 +32,9 @@ class VersionUpdate extends BaseService implements Version
      * @return mixed The response from the version check.
      */
 
-    public function check(): array|null
+    public function check(?string $url = null): array|null
     {
-        return $this->checkVersion()->getCheckResponse();
+        return $this->checkVersion($url)->getCheckResponse();
     }
 
     /**
