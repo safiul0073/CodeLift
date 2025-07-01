@@ -79,7 +79,7 @@ If you discover any security-related issues, please email security@codelifter.io
 
 ## Authors
 
-This package is developed and maintained by [Safiul Hasan](https://github.com/safiul0073).
+This package is developed and maintained by [Safiul](https://github.com/safiul0073).
 
 ## License
 
