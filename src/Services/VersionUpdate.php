@@ -10,6 +10,7 @@ use Src\Interface\Version;
 
 class VersionUpdate extends BaseService implements Version
 {
+    protected $trackingFileName = '.auto-update-sync-state.json';
 
     /**
      * Configures the version update service by setting the application name and optionally the base URL.
@@ -97,23 +98,83 @@ class VersionUpdate extends BaseService implements Version
         }
     }
 
-    private function updateAllFiles( string $extractPath, string $projectPath)
-    {
-        $files = File::allFiles($extractPath, true);
+private function updateAllFiles(string $extractPath, string $projectPath)
+{
+    $files = File::allFiles($extractPath, true);
+    $trackingData = $this->getTrackingFileData(); // previous state
 
-        foreach ($files as $file) {
-            $relativePath = str_replace($extractPath.'/', '', $file->getPathname());
+    $newTrackingData = [];
 
-            foreach ($this->ignoredFiles() as $ignore) {
-                if (str_starts_with($relativePath, $ignore)) {
-                    continue 2;
-                }
+    foreach ($files as $file) {
+        $relativePath = str_replace($extractPath . '/', '', $file->getPathname());
+
+        foreach ($this->ignoredFiles() as $ignore) {
+            if (str_starts_with($relativePath, $ignore)) {
+                continue 2;
             }
-
-            $targetPath = $projectPath.'/'.$relativePath;
-            File::ensureDirectoryExists(dirname($targetPath));
-            File::copy($file->getPathname(), $targetPath);
         }
+
+        $targetPath = $projectPath . '/' . $relativePath;
+        File::ensureDirectoryExists(dirname($targetPath));
+
+        $hash = md5_file($file->getPathname());
+        $size = filesize($file->getPathname());
+
+        $previous = $trackingData[$relativePath] ?? null;
+
+        if ($previous && $previous['hash'] === $hash && $previous['size'] === $size) {
+            // File is unchanged, skip copying
+            $newTrackingData[$relativePath] = $previous;
+            continue;
+        }
+
+        // New or updated file
+        File::copy($file->getPathname(), $targetPath);
+        $newTrackingData[$relativePath] = [
+            'type' => 'file',
+            'path' => $relativePath,
+            'size' => $size,
+            'hash' => $hash,
+        ];
+    }
+
+    $this->generateUpdateJsonTrackingFile($newTrackingData);
+}
+
+    /**
+     * Generates a JSON file with the current state of the update process.
+     * This file is used to track the state of the update process.
+     * Do not modify this file. If you delete this file a resync will be triggered.
+     * @param array $data // ['type' => 'file', 'path' => '/path/to/file', 'size' => 1234, 'hash' => '1234567890']
+     * @return void
+     */
+    private function generateUpdateJsonTrackingFile(array $data)
+    {
+        $trackingFileName = base_path($this->trackingFileName);
+
+        // Ensure directory exists
+        File::ensureDirectoryExists(dirname($trackingFileName));
+
+        $file_state = [
+            'description' => 'Do not delete this file. It tracks the state of the update process. Deleting this file will trigger a full resync.',
+            'generated_at' => now(),
+            'data' => $data
+        ];
+
+        File::put($trackingFileName, json_encode($file_state, JSON_PRETTY_PRINT));
+    }
+
+    private function getTrackingFileData(): array
+    {
+        $trackingFileName = base_path($this->trackingFileName);
+
+        if (!File::exists($trackingFileName)) {
+            return []; // First time or tracking file deleted
+        }
+
+        $file_state = json_decode(File::get($trackingFileName), true);
+
+        return $file_state['data'] ?? [];
     }
 
     private function updateDatabase()
@@ -124,8 +185,6 @@ class VersionUpdate extends BaseService implements Version
         Artisan::call('optimize:clear');
         Artisan::call('migrate', ['--force' => true]);
     }
-
-
 
     /**
      * Remove the downloaded zip file and the extracted folder after the update is done.

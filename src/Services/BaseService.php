@@ -121,8 +121,7 @@ class BaseService
 
         try {
             $response = Http::get("$url?version=$version&slug=$this->application_name&ip=$ip_address")->json();
-        } catch (\Throwable $th) {
-        }
+        } catch (\Throwable $th) {}
 
         if (isset($response['file_path'])) {
             $this->setNewProject($response['file_path']);
