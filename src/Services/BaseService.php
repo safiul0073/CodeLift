@@ -115,10 +115,10 @@ class BaseService
      */
     protected function checkVersion(?string $url = null)
     {
-        $url = $this->getBaseUrl() . $url ?? '/api/v1/check-update';
+        $url = $this->getBaseUrl() . ($url ?? '/api/v1/update-available');
         $version = config('app.version');
         $ip_address = request()->ip();
-
+  
         try {
             $response = Http::get("$url?version=$version&slug=$this->application_name&ip=$ip_address")->json();
         } catch (\Throwable $th) {}
