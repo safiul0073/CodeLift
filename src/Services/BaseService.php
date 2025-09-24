@@ -115,7 +115,7 @@ class BaseService
      */
     protected function checkVersion(?string $url = null)
     {
-        $url = $this->getBaseUrl() . ($url ?? '/api/v1/update-available');
+        $url = $this->getBaseUrl() . ($url ?? '/api/v1/check-update');
         $version = config('app.version');
         $ip_address = request()->ip();
   
