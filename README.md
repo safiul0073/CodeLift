@@ -27,6 +27,13 @@ Update your `.env` file to include the API endpoint for checking updates:
 UPDATE_API_URL=https://example.com/api/updates
 APP_NAME=YourApplicationName
 ```
+### Publishing (Optional)
+
+To publish the package's configuration, run the following command:
+
+```bash
+php artisan vendor:publish --tag=lifter-config
+```
 
 ### Code Examples
 
