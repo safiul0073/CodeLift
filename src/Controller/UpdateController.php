@@ -6,15 +6,15 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Src\Interface\Version;
 
-class UpdateController extends Controller 
+class UpdateController extends Controller
 {
     private $version;
 
     public function __construct(Version $version)
     {
-       $version->setup(env('APP_NAME'), env('UPDATE_API_URL'));
+        $version->setup(env('APP_NAME'), env('UPDATE_API_URL'));
 
-       $this->version = $version;
+        $this->version = $version;
     }
 
     public function index()
