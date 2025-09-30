@@ -11,7 +11,7 @@ class PhpUpdateProvider extends ServiceProvider
     public function boot()
     {
         $this->mergeConfigFrom(
-            __DIR__.'/../config/lifter.php', 'lifter'
+            __DIR__.'/../../config/lifter.php', 'lifter'
         );
 
         $this->app->bind(Version::class, VersionUpdate::class);
@@ -20,7 +20,7 @@ class PhpUpdateProvider extends ServiceProvider
     public function register()
     {
         $this->publishes([
-            __DIR__.'/../config/lifter.php' => config_path('lifter.php'),
+            __DIR__.'/../../config/lifter.php' => config_path('lifter.php'),
         ], 'lifter-config');
     }
 }
