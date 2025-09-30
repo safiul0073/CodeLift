@@ -131,7 +131,6 @@ class VersionUpdate extends BaseService implements Version
 
                 $sourceHash = md5_file($file->getPathname());
                 $sourceSize = filesize($file->getPathname());
-                $sourceMtime = filemtime($file->getPathname());
 
                 $previous = $trackingData[$relativePath] ?? null;
                 $targetExists = file_exists($targetPath);
@@ -143,12 +142,11 @@ class VersionUpdate extends BaseService implements Version
                     continue;
                 }
 
-                if ($targetExists) {
-                    $targetMtime = filemtime($targetPath);
+                if ($targetExists && is_file($targetPath)) {
                     $targetHash = md5_file($targetPath);
 
                     // Case 2: local manual edit protection
-                    if ($targetMtime > $sourceMtime && $targetHash !== $sourceHash) {
+                    if ($targetPath && $targetHash !== $sourceHash) {
                         $newTrackingData[$relativePath] = [
                             'type' => 'file',
                             'path' => $relativePath,
@@ -158,10 +156,10 @@ class VersionUpdate extends BaseService implements Version
 
                         continue;
                     }
-
-                    // Backup before overwrite
-                    $this->backup($targetPath, $relativePath, $backupDir);
                 }
+
+                // Backup before overwrite
+                $this->backup($targetPath, $relativePath, $backupDir);
 
                 // Case 3: copy update file
                 File::copy($file->getPathname(), $targetPath);
