@@ -159,8 +159,8 @@ class VersionUpdate extends BaseService implements Version
                 if ($targetExists && is_file($targetPath)) {
                     $targetHash = md5_file($targetPath);
 
-                    // Case 2: local manual edit protection
-                    if ($targetHash !== $sourceHash) {
+                    // Case 2: local manual edit protection and is not config file app.php
+                    if ($targetHash !== $sourceHash && $relativePath !== 'config/app.php') {
                         $newTrackingData[$relativePath] = [
                             'type' => 'file',
                             'path' => $relativePath,
@@ -178,7 +178,7 @@ class VersionUpdate extends BaseService implements Version
                 // ✅ Final check + safe copy
                 if (is_file($sourcePath)) {
                     if (! @copy($sourcePath, $targetPath)) {
-                        Log::error('Failed to copy file', [
+                        Log::error('Update skipped: copy() failed', [
                             'source' => $sourcePath,
                             'target' => $targetPath,
                         ]);
@@ -202,6 +202,9 @@ class VersionUpdate extends BaseService implements Version
 
             $this->generateUpdateJsonTrackingFile($newTrackingData);
 
+            // remove backup
+            $this->removeBackup($backupDir);
+
             Artisan::call('up');
 
             return true;
@@ -209,12 +212,17 @@ class VersionUpdate extends BaseService implements Version
             $this->rollback($backupDir, $projectPath);
             Artisan::call('up');
 
-            Log::error('Update failed: '.$th->getMessage(), [
+            Log::error('Update failed '.$th->getMessage(), [
                 'trace' => $th->getTraceAsString(),
             ]);
 
             return false;
         }
+    }
+
+    private function removeBackup(string $backupDir)
+    {
+        File::deleteDirectory($backupDir);
     }
 
     private function isIgnored(string $relativePath): bool
@@ -302,12 +310,21 @@ class VersionUpdate extends BaseService implements Version
 
     private function backup(string $targetPath, string $relativePath, string $backupDir): void
     {
-        if (! file_exists($targetPath)) {
+        if (! file_exists($targetPath) && ! is_dir($targetPath) && ! is_link($targetPath)) {
             return;
         }
 
-        File::ensureDirectoryExists(dirname($backupDir.'/'.$relativePath));
-        File::copy($targetPath, $backupDir.'/'.$relativePath);
+        $backupPath = $backupDir.'/'.$relativePath;
+        File::ensureDirectoryExists(dirname($backupPath));
+
+        if (is_file($targetPath)) {
+            File::copy($targetPath, $backupPath);
+        } elseif (is_dir($targetPath)) {
+            File::copyDirectory($targetPath, $backupPath);
+        } elseif (is_link($targetPath)) {
+            $linkTarget = readlink($targetPath);
+            symlink($linkTarget, $backupPath);
+        }
     }
 
     private function rollback(string $backupDir, string $projectPath): void
