@@ -60,7 +60,7 @@ class VersionUpdate extends BaseService implements Version
         $result = $this->updateAllFiles($extractPath, $projectPath);
 
         if (! $result) {
-            return;
+            throw new MyException('Failed to update files.');
         }
 
         $this->updateDatabase();
@@ -118,7 +118,14 @@ class VersionUpdate extends BaseService implements Version
             foreach ($files as $file) {
                 $sourcePath = $file->getPathname();
 
-                if (! is_file($sourcePath) || is_dir($file->getPathname())) {
+                // ✅ double-check before doing anything
+                if (! file_exists($sourcePath)) {
+                    Log::warning("Update skipped missing path: {$sourcePath}");
+
+                    continue;
+                }
+
+                if (! is_file($sourcePath)) {
                     Log::warning("Update skipped non-file entry: {$sourcePath}");
 
                     continue;
@@ -165,17 +172,32 @@ class VersionUpdate extends BaseService implements Version
                     }
                 }
 
+                // Backup before overwrite
                 $this->backup($targetPath, $relativePath, $backupDir);
 
-                // Case 3: copy update file (guaranteed file here)
-                File::copy($sourcePath, $targetPath);
+                // ✅ Final check + safe copy
+                if (is_file($sourcePath)) {
+                    if (! @copy($sourcePath, $targetPath)) {
+                        Log::error('Failed to copy file', [
+                            'source' => $sourcePath,
+                            'target' => $targetPath,
+                        ]);
 
-                $newTrackingData[$relativePath] = [
-                    'type' => 'file',
-                    'path' => $relativePath,
-                    'size' => $sourceSize,
-                    'hash' => $sourceHash,
-                ];
+                        continue;
+                    }
+
+                    $newTrackingData[$relativePath] = [
+                        'type' => 'file',
+                        'path' => $relativePath,
+                        'size' => $sourceSize,
+                        'hash' => $sourceHash,
+                    ];
+                } else {
+                    Log::error('Update skipped: copy() blocked non-file', [
+                        'source' => $sourcePath,
+                        'relative' => $relativePath,
+                    ]);
+                }
             }
 
             $this->generateUpdateJsonTrackingFile($newTrackingData);
