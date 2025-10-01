@@ -57,7 +57,11 @@ class VersionUpdate extends BaseService implements Version
 
         $this->extractZip($zipPath, $extractPath);
 
-        $this->updateAllFiles($extractPath, $projectPath);
+        $result = $this->updateAllFiles($extractPath, $projectPath);
+
+        if (! $result) {
+            return;
+        }
 
         $this->updateDatabase();
 
@@ -99,7 +103,7 @@ class VersionUpdate extends BaseService implements Version
         }
     }
 
-    private function updateAllFiles(string $extractPath, string $projectPath): void
+    private function updateAllFiles(string $extractPath, string $projectPath): bool
     {
         Artisan::call('down');
 
@@ -112,16 +116,19 @@ class VersionUpdate extends BaseService implements Version
             $newTrackingData = [];
 
             foreach ($files as $file) {
-                if (! $file->isFile()) {
+                $sourcePath = $file->getPathname();
+
+                if (! is_file($sourcePath) || is_dir($file->getPathname())) {
+                    Log::warning("Update skipped non-file entry: {$sourcePath}");
+
                     continue;
                 }
 
-                $relativePath = Str::after($file->getPathname(), $extractPath.DIRECTORY_SEPARATOR);
+                $relativePath = Str::after($sourcePath, $extractPath.DIRECTORY_SEPARATOR);
                 if (empty($relativePath)) {
                     continue;
                 }
 
-                // skip ignored paths
                 if ($this->isIgnored($relativePath)) {
                     continue;
                 }
@@ -129,8 +136,8 @@ class VersionUpdate extends BaseService implements Version
                 $targetPath = $projectPath.DIRECTORY_SEPARATOR.$relativePath;
                 File::ensureDirectoryExists(dirname($targetPath));
 
-                $sourceHash = md5_file($file->getPathname());
-                $sourceSize = filesize($file->getPathname());
+                $sourceHash = md5_file($sourcePath);
+                $sourceSize = filesize($sourcePath);
 
                 $previous = $trackingData[$relativePath] ?? null;
                 $targetExists = file_exists($targetPath);
@@ -146,7 +153,7 @@ class VersionUpdate extends BaseService implements Version
                     $targetHash = md5_file($targetPath);
 
                     // Case 2: local manual edit protection
-                    if ($targetPath && $targetHash !== $sourceHash) {
+                    if ($targetHash !== $sourceHash) {
                         $newTrackingData[$relativePath] = [
                             'type' => 'file',
                             'path' => $relativePath,
@@ -158,11 +165,10 @@ class VersionUpdate extends BaseService implements Version
                     }
                 }
 
-                // Backup before overwrite
                 $this->backup($targetPath, $relativePath, $backupDir);
 
-                // Case 3: copy update file
-                File::copy($file->getPathname(), $targetPath);
+                // Case 3: copy update file (guaranteed file here)
+                File::copy($sourcePath, $targetPath);
 
                 $newTrackingData[$relativePath] = [
                     'type' => 'file',
@@ -175,11 +181,17 @@ class VersionUpdate extends BaseService implements Version
             $this->generateUpdateJsonTrackingFile($newTrackingData);
 
             Artisan::call('up');
+
+            return true;
         } catch (\Throwable $th) {
             $this->rollback($backupDir, $projectPath);
             Artisan::call('up');
 
-            Log::error('Update failed: '.$th->getMessage(), ['trace' => $th->getTraceAsString()]);
+            Log::error('Update failed: '.$th->getMessage(), [
+                'trace' => $th->getTraceAsString(),
+            ]);
+
+            return false;
         }
     }
 
