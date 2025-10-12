@@ -105,7 +105,8 @@ class VersionUpdate extends BaseService implements Version
 
     private function updateAllFiles(string $extractPath, string $projectPath): bool
     {
-        Artisan::call('down');
+        $maintenance_secret = config('lifter.maintenance_secret') ?? 'admin';
+        Artisan::call('down', ['--secret' => $maintenance_secret]);
 
         $backupDir = storage_path('app/update-backup/'.date('Ymd_His'));
 
@@ -205,7 +206,7 @@ class VersionUpdate extends BaseService implements Version
             // remove backup
             $this->removeBackup($backupDir);
 
-            Artisan::call('up');
+            Artisan::call('up', ['--secret' => $maintenance_secret]);
 
             return true;
         } catch (\Throwable $th) {
