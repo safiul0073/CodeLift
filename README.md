@@ -82,7 +82,7 @@ Ensure your server meets the following requirements before installing:
 
 ## Security
 
-If you discover any security-related issues, please email security@codelifter.io directly.
+If you discover any security-related issues, please email mdsafiul0073@gmail.com directly.
 
 ## Authors
 
