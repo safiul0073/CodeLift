@@ -8,5 +8,5 @@ interface Version
 
     public function check(?string $url = null);
 
-    public function process(string $fileUrl);
+    public function process(string $fileUrl, ?bool $isForced = false, ?bool $isNewTracking = false);
 }
