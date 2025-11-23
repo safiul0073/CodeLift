@@ -45,11 +45,19 @@ class VersionUpdate extends BaseService implements Version
      *
      * @return void
      */
-    public function process(string $fileUrl)
+    public function process(string $fileUrl, bool $isForced = false, bool $isNewTracking = false): void
     {
         $zipPath = storage_path('app/update.zip');
         $extractPath = storage_path('app/update-temp');
         $projectPath = base_path();
+
+        if ($isNewTracking) {
+            // remove old tracking file to force resync
+            $trackingFileName = base_path($this->trackingFileName);
+            if (File::exists($trackingFileName)) {
+                File::delete($trackingFileName);
+            }
+        }
 
         $this->getFileFromUrl($fileUrl, $zipPath);
 
@@ -57,7 +65,7 @@ class VersionUpdate extends BaseService implements Version
 
         $this->extractZip($zipPath, $extractPath);
 
-        $result = $this->updateAllFiles($extractPath, $projectPath);
+        $result = $this->updateAllFiles($extractPath, $projectPath, $isForced);
 
         if (! $result) {
             throw new MyException('Failed to update files.');
@@ -72,7 +80,7 @@ class VersionUpdate extends BaseService implements Version
 
     private function ignoredFiles()
     {
-        return ['.env', 'vendor', 'storage', 'node_modules', 'composer.lock'];
+        return ['.env', 'storage', 'node_modules', 'composer.lock', 'public'];
     }
 
     private function getFileFromUrl(string $fileUrl, string $zipPath)
@@ -103,7 +111,7 @@ class VersionUpdate extends BaseService implements Version
         }
     }
 
-    private function updateAllFiles(string $extractPath, string $projectPath): bool
+    private function updateAllFiles(string $extractPath, string $projectPath, bool $isForced): bool
     {
         $maintenance_secret = config('lifter.maintenance_secret') ?? 'admin';
         Artisan::call('down', ['--secret' => $maintenance_secret]);
@@ -112,31 +120,28 @@ class VersionUpdate extends BaseService implements Version
 
         try {
             $files = File::allFiles($extractPath);
-            $trackingData = $this->getTrackingFileData();
 
+            $trackingData = $this->getTrackingFileData();
             $newTrackingData = [];
 
             foreach ($files as $file) {
+
                 $sourcePath = $file->getPathname();
 
-                // ✅ double-check before doing anything
-                if (! file_exists($sourcePath)) {
-                    Log::warning("Update skipped missing path: {$sourcePath}");
-
-                    continue;
-                }
-
+                // Skip invalid or missing file
                 if (! is_file($sourcePath)) {
-                    Log::warning("Update skipped non-file entry: {$sourcePath}");
+                    Log::warning("Update skipped: invalid or non-file entry → {$sourcePath}");
 
                     continue;
                 }
 
+                // Build relative path
                 $relativePath = Str::after($sourcePath, $extractPath.DIRECTORY_SEPARATOR);
-                if (empty($relativePath)) {
+                if (! $relativePath) {
                     continue;
                 }
 
+                // Skip ignored files
                 if ($this->isIgnored($relativePath)) {
                     continue;
                 }
@@ -150,18 +155,33 @@ class VersionUpdate extends BaseService implements Version
                 $previous = $trackingData[$relativePath] ?? null;
                 $targetExists = file_exists($targetPath);
 
-                // Case 1: unchanged → reuse tracking
-                if ($previous && $previous['hash'] === $sourceHash && $previous['size'] === $sourceSize) {
+                /**
+                 * ---------------------------------------------------------
+                 *  CASE 1: File unchanged according to previous tracking
+                 * ---------------------------------------------------------
+                 */
+                if ($previous &&
+                    $previous['hash'] === $sourceHash &&
+                    $previous['size'] === $sourceSize
+                ) {
                     $newTrackingData[$relativePath] = $previous;
 
                     continue;
                 }
 
-                if ($targetExists && is_file($targetPath)) {
+                /**
+                 * ---------------------------------------------------------
+                 *  CASE 2: Local manual edit detected → skip overwrite
+                 *  EXCEPT for config/app.php (always overwrite) and if force_update is true
+                 * ---------------------------------------------------------
+                 */
+                if ($targetExists && is_file($targetPath) && ! $isForced) {
                     $targetHash = md5_file($targetPath);
 
-                    // Case 2: local manual edit protection and is not config file app.php
                     if ($targetHash !== $sourceHash && $relativePath !== 'config/app.php') {
+
+                        Log::info("Local edit detected → skip overwrite for: {$relativePath}");
+
                         $newTrackingData[$relativePath] = [
                             'type' => 'file',
                             'path' => $relativePath,
@@ -173,47 +193,66 @@ class VersionUpdate extends BaseService implements Version
                     }
                 }
 
-                // Backup before overwrite
+                /**
+                 * ---------------------------------------------------------
+                 *  Backup before updating
+                 * ---------------------------------------------------------
+                 */
                 $this->backup($targetPath, $relativePath, $backupDir);
 
-                // ✅ Final check + safe copy
-                if (is_file($sourcePath)) {
-                    if (! @copy($sourcePath, $targetPath)) {
-                        Log::error('Update skipped: copy() failed', [
-                            'source' => $sourcePath,
-                            'target' => $targetPath,
-                        ]);
-
-                        continue;
-                    }
-
-                    $newTrackingData[$relativePath] = [
-                        'type' => 'file',
-                        'path' => $relativePath,
-                        'size' => $sourceSize,
-                        'hash' => $sourceHash,
-                    ];
-                } else {
-                    Log::error('Update skipped: copy() blocked non-file', [
+                /**
+                 * ---------------------------------------------------------
+                 *  Copy new file from extracted zip
+                 * ---------------------------------------------------------
+                 */
+                if (! @copy($sourcePath, $targetPath)) {
+                    Log::error('Update failed: copy() error', [
                         'source' => $sourcePath,
-                        'relative' => $relativePath,
+                        'target' => $targetPath,
                     ]);
+
+                    continue;
                 }
+
+                /**
+                 * ---------------------------------------------------------
+                 *  Save to new tracking
+                 * ---------------------------------------------------------
+                 */
+                $newTrackingData[$relativePath] = [
+                    'type' => 'file',
+                    'path' => $relativePath,
+                    'size' => $sourceSize,
+                    'hash' => $sourceHash,
+                ];
             }
 
+            /**
+             * ---------------------------------------------------------
+             *  Save new tracking JSON
+             * ---------------------------------------------------------
+             */
             $this->generateUpdateJsonTrackingFile($newTrackingData);
 
-            // remove backup
+            /**
+             * ---------------------------------------------------------
+             *  Cleanup backup folder
+             * ---------------------------------------------------------
+             */
             $this->removeBackup($backupDir);
 
-            Artisan::call('up', ['--secret' => $maintenance_secret]);
-
-            return true;
-        } catch (\Throwable $th) {
-            $this->rollback($backupDir, $projectPath);
             Artisan::call('up');
 
-            Log::error('Update failed '.$th->getMessage(), [
+            return true;
+
+        } catch (\Throwable $th) {
+
+            // Rollback changes
+            $this->rollback($backupDir, $projectPath);
+
+            Artisan::call('up');
+
+            Log::error('Update failed: '.$th->getMessage(), [
                 'trace' => $th->getTraceAsString(),
             ]);
 

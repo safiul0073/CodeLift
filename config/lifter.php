@@ -25,5 +25,4 @@ return [
      * maintainer secret key
      */
     'maintenance_secret' => 'admin',
-
 ];
