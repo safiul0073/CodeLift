@@ -45,7 +45,7 @@ class VersionUpdate extends BaseService implements Version
      *
      * @return void
      */
-    public function process(string $fileUrl, bool $isForced = false, bool $isNewTracking = false): void
+    public function process(string $fileUrl, ?bool $isForced = false, ?bool $isNewTracking = false): void
     {
         $zipPath = storage_path('app/update.zip');
         $extractPath = storage_path('app/update-temp');
